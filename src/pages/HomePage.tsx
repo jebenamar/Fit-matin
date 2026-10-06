@@ -4,6 +4,8 @@ import { Screen } from '../components/Icons'
 import {
   estimateWorkoutCalories,
   estimateWorkoutMinutes,
+  REST_BETWEEN_EXERCISES_SEC,
+  REST_BETWEEN_SETS_SEC,
 } from '../data/program'
 import { getExercise } from '../data/exercises'
 import {
@@ -95,6 +97,12 @@ export function HomePage() {
           {todayDone ? 'Refaire la séance' : 'Commencer la séance'}
         </Link>
       )}
+      {workout.kind !== 'rest' && workout.items.length > 0 && (
+        <p className="mt-3 text-center text-xs text-mute">
+          {REST_BETWEEN_SETS_SEC} s entre les séries · {REST_BETWEEN_EXERCISES_SEC / 60} min entre les
+          exercices
+        </p>
+      )}
 
       <section className="mt-8">
         <div className="flex items-end justify-between">
@@ -181,6 +189,7 @@ export function HomePage() {
                     <p className="text-xs text-mute">
                       {item.sets} × {item.reps ? `${item.reps} reps` : `${item.durationSec}s`}
                       {item.recommendedLoadKg ? ` · ${item.recommendedLoadKg} kg` : ''}
+                      {item.sets > 1 ? ` · ${REST_BETWEEN_SETS_SEC} s récup` : ''}
                     </p>
                   </div>
                 </li>

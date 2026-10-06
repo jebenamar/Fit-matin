@@ -134,5 +134,5 @@ export const WEEK_INTENTS: Record<number, string> = {
   1: 'Découverte des mouvements et technique',
   2: 'Plus de répétitions, même qualité',
   3: 'Charges en légère hausse',
-  4: 'Intensité max, récup plus courte',
+  4: 'Intensité max, 4 séries',
 }

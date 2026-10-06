@@ -7,6 +7,9 @@ import type {
   WorkoutItem,
 } from '../types'
 
+export const REST_BETWEEN_SETS_SEC = 40
+export const REST_BETWEEN_EXERCISES_SEC = 120
+
 interface TemplateItem {
   exerciseId: ExerciseId
   restSec: number
@@ -154,7 +157,6 @@ function progressTemplate(week: number, item: TemplateItem): WorkoutItem {
     if (reps) reps = 12
     if (durationSec && durationSec < 120) durationSec += 15
     if (load) load += 2
-    restSec = Math.max(20, restSec - 10)
   }
 
   if (item.exerciseId === 'walk' && item.durationSec && item.durationSec >= 180) {
@@ -202,10 +204,12 @@ export function getWorkout(week: number, weekday: Weekday): DailyWorkout {
 export function estimateWorkoutMinutes(workout: DailyWorkout): number {
   if (workout.kind === 'rest') return 0
   let seconds = 0
-  for (const item of workout.items) {
+  workout.items.forEach((item, i) => {
     const work = item.durationSec ?? Math.round((item.reps ?? 10) * 2.4)
-    seconds += item.sets * (work + item.restSec)
-  }
+    seconds += item.sets * work
+    seconds += Math.max(0, item.sets - 1) * REST_BETWEEN_SETS_SEC
+    if (i < workout.items.length - 1) seconds += REST_BETWEEN_EXERCISES_SEC
+  })
   return Math.max(8, Math.round(seconds / 60))
 }
 

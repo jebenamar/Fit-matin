@@ -5,7 +5,7 @@ import { LoadStepper } from '../components/LoadStepper'
 import { BareShell } from '../components/Layout'
 import { IconCheck, IconClose, IconPause, IconPlay } from '../components/Icons'
 import { getExercise } from '../data/exercises'
-import { PROGRAM } from '../data/program'
+import { PROGRAM, REST_BETWEEN_EXERCISES_SEC, REST_BETWEEN_SETS_SEC } from '../data/program'
 import { formatDuration } from '../lib/dates'
 import { maxDumbbellKg } from '../lib/loads'
 import { useAppStore, useTodayWorkout } from '../store/useAppStore'
@@ -116,12 +116,8 @@ export function WorkoutPage() {
       finishWorkout(false)
       return
     }
-    if (item.restSec <= 0) {
-      advanceAfterRest()
-      return
-    }
     setPhase('rest')
-    setLeft(item.restSec)
+    setLeft(lastSet ? REST_BETWEEN_EXERCISES_SEC : REST_BETWEEN_SETS_SEC)
     setRunning(true)
   }
 
@@ -152,7 +148,7 @@ export function WorkoutPage() {
   if (workout.kind === 'rest' || items.length === 0) {
     return (
       <BareShell>
-        <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+        <div className="flex min-h-full flex-1 flex-col items-center justify-center px-6 text-center">
           <p className="display text-6xl">Repos</p>
           <p className="mt-3 text-mute">Pas de séance aujourd’hui. Reviens demain.</p>
           <Link to="/" className="cta mt-8 flex items-center justify-center px-8">
@@ -167,7 +163,7 @@ export function WorkoutPage() {
     const minutes = Math.max(1, Math.round((Date.now() - startedAt) / 60000))
     return (
       <BareShell>
-        <div className="flex min-h-dvh flex-col px-6 pb-10 pt-[calc(24px+env(safe-area-inset-top))]">
+        <div className="flex min-h-full flex-1 flex-col px-6 pb-10 pt-[calc(24px+env(safe-area-inset-top))]">
           <p className="text-sm font-bold uppercase tracking-[0.18em] text-accent-2">Séance terminée</p>
           <h1 className="display mt-3 text-6xl leading-[0.9]">
             Bien
@@ -193,8 +189,12 @@ export function WorkoutPage() {
     )
   }
 
+  const betweenSets = setNo < item.sets
+  const restTotal = betweenSets ? REST_BETWEEN_SETS_SEC : REST_BETWEEN_EXERCISES_SEC
+  const lastSet = setNo >= item.sets
+  const lastExercise = index >= items.length - 1
   const nextLabel =
-    setNo < item.sets
+    betweenSets
       ? `${exercise.name} × ${item.reps ?? `${item.durationSec}s`} · série ${setNo + 1}/${item.sets}`
       : nextExercise
         ? `${nextExercise.name}${nextAfterRest?.reps ? ` × ${nextAfterRest.reps}` : nextAfterRest?.durationSec ? ` · ${nextAfterRest.durationSec}s` : ''}`
@@ -202,8 +202,8 @@ export function WorkoutPage() {
 
   return (
     <BareShell>
-      <div className="flex min-h-dvh flex-col px-5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-[calc(12px+env(safe-area-inset-top))]">
-        <header className="flex items-center justify-between">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-[calc(18px+env(safe-area-inset-bottom))] pt-[calc(12px+env(safe-area-inset-top))]">
+        <header className="flex shrink-0 items-center justify-between">
           <button
             type="button"
             className="tap grid place-items-center rounded-full bg-card"
@@ -219,19 +219,33 @@ export function WorkoutPage() {
         </header>
 
         {phase === 'rest' ? (
-          <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-mute">Récupération</p>
-            <p className="display mt-3 text-[92px] leading-none text-accent">{formatDuration(left)}</p>
-            <div className="mt-8 w-full rounded-3xl bg-card p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-mute">Prochain exercice</p>
-              <p className="mt-1 text-lg font-bold">{nextLabel}</p>
-              {nextAfterRest ? (
-                <div className="mx-auto mt-2 max-w-[160px]">
-                  <ExerciseAnimation id={nextAfterRest.exerciseId} compact />
-                </div>
-              ) : null}
+          <>
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto text-center">
+              <p className="text-sm font-bold uppercase tracking-[0.2em] text-mute">
+                {betweenSets ? 'Récupération série' : 'Récupération exercice'}
+              </p>
+              <p className="mt-1 text-sm text-mute">
+                {betweenSets
+                  ? `${REST_BETWEEN_SETS_SEC} secondes avant la série suivante`
+                  : `${REST_BETWEEN_EXERCISES_SEC / 60} minutes avant le prochain exercice`}
+              </p>
+              <RestTimer left={left} total={restTotal} />
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-accent-2">
+                Passage automatique à 00:00
+              </p>
+              <div className="mt-6 w-full rounded-3xl bg-card p-4">
+                <p className="text-xs uppercase tracking-[0.14em] text-mute">
+                  {betweenSets ? 'Prochaine série' : 'Prochain exercice'}
+                </p>
+                <p className="mt-1 text-lg font-bold">{nextLabel}</p>
+                {nextAfterRest ? (
+                  <div className="mx-auto mt-2 max-w-[160px]">
+                    <ExerciseAnimation id={nextAfterRest.exerciseId} compact />
+                  </div>
+                ) : null}
+              </div>
             </div>
-            <div className="mt-8 flex w-full gap-3">
+            <div className="mt-4 flex shrink-0 gap-3">
               <button type="button" className="ghost-btn flex-1" onClick={() => setRunning((v) => !v)}>
                 {running ? 'Pause' : 'Reprendre'}
               </button>
@@ -239,50 +253,59 @@ export function WorkoutPage() {
                 Passer
               </button>
             </div>
-          </div>
+          </>
         ) : (
           <>
-            <div className="-mx-2 mt-1">
-              <ExerciseAnimation id={exercise.id} />
-            </div>
-            <h1 className="display text-center text-5xl leading-none">{exercise.name}</h1>
-            <p className="mt-2 text-center text-sm text-mute">{exercise.cue}</p>
-            {item.reps ? (
-              <p className="display mt-5 text-center text-4xl text-accent-2">{item.reps} répétitions</p>
-            ) : null}
-            <p className="mt-2 text-center text-sm font-semibold text-mute">
-              Série {setNo} / {item.sets}
-            </p>
-
-            {exercise.loadType !== 'none' && (
-              <div className="mt-5 rounded-3xl bg-card px-4 py-4">
-                <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-mute">
-                  Charge {item.recommendedLoadKg ? `· recommandé ${item.recommendedLoadKg} kg` : ''}
+            <div className="min-h-0 flex-1 overflow-y-auto pb-2">
+              <div className="-mx-2 mt-1">
+                <ExerciseAnimation id={exercise.id} />
+              </div>
+              <h1 className="display text-center text-5xl leading-none">{exercise.name}</h1>
+              <p className="mt-2 text-center text-sm text-mute">{exercise.cue}</p>
+              {item.reps ? (
+                <p className="display mt-5 text-center text-4xl text-accent-2">{item.reps} répétitions</p>
+              ) : null}
+              <p className="mt-2 text-center text-sm font-semibold text-mute">
+                Série {setNo} / {item.sets}
+              </p>
+              {!lastSet || !lastExercise ? (
+                <p className="mt-1 text-center text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                  {lastSet
+                    ? `Ensuite : ${REST_BETWEEN_EXERCISES_SEC / 60} min de récup`
+                    : `Ensuite : ${REST_BETWEEN_SETS_SEC} s de récup`}
                 </p>
-                <LoadStepper
-                  value={currentLoad}
-                  min={profile.handleKg}
-                  max={maxKg}
-                  onChange={(kg) => setLoad(exercise.id, kg)}
-                />
-              </div>
-            )}
+              ) : null}
 
-            {timed && (
-              <div className="mt-5 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  className="tap grid place-items-center rounded-full bg-card"
-                  onClick={() => setRunning((v) => !v)}
-                  aria-label={running ? 'Pause' : 'Reprendre'}
-                >
-                  {running ? <IconPause /> : <IconPlay />}
-                </button>
-                <p className="display text-5xl">{formatDuration(left)}</p>
-              </div>
-            )}
+              {exercise.loadType !== 'none' && (
+                <div className="mt-5 rounded-3xl bg-card px-4 py-4">
+                  <p className="mb-2 text-center text-[11px] font-bold uppercase tracking-[0.16em] text-mute">
+                    Charge {item.recommendedLoadKg ? `· recommandé ${item.recommendedLoadKg} kg` : ''}
+                  </p>
+                  <LoadStepper
+                    value={currentLoad}
+                    min={profile.handleKg}
+                    max={maxKg}
+                    onChange={(kg) => setLoad(exercise.id, kg)}
+                  />
+                </div>
+              )}
 
-            <div className="mt-auto flex gap-3 pt-6">
+              {timed && (
+                <div className="mt-5 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    className="tap grid place-items-center rounded-full bg-card"
+                    onClick={() => setRunning((v) => !v)}
+                    aria-label={running ? 'Pause' : 'Reprendre'}
+                  >
+                    {running ? <IconPause /> : <IconPlay />}
+                  </button>
+                  <p className="display text-5xl">{formatDuration(left)}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex shrink-0 gap-3">
               <button type="button" className="ghost-btn flex-1" onClick={skipExercise}>
                 Passer
               </button>
@@ -298,5 +321,43 @@ export function WorkoutPage() {
         )}
       </div>
     </BareShell>
+  )
+}
+
+function RestTimer({ left, total }: { left: number; total: number }) {
+  const size = 220
+  const stroke = 10
+  const radius = (size - stroke) / 2
+  const circumference = 2 * Math.PI * radius
+  const progress = total > 0 ? left / total : 0
+
+  return (
+    <div className="relative mt-4 grid place-items-center">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.08)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#ff5a1f"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
+          style={{ transition: 'stroke-dashoffset 1s linear' }}
+        />
+      </svg>
+      <p className="absolute display text-[72px] leading-none text-accent" aria-live="polite">
+        {formatDuration(left)}
+      </p>
+    </div>
   )
 }

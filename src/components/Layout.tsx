@@ -48,7 +48,9 @@ export function Layout() {
 export function BareShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
-      <div className="app-frame overflow-hidden">{children}</div>
+      <div className="app-frame">
+        <div className="app-scroll app-scroll-fill">{children}</div>
+      </div>
     </div>
   )
 }

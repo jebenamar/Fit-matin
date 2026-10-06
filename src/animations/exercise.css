@@ -18,7 +18,7 @@
 }
 
 .ex-block:not(.is-compact) .ex-photo {
-  max-height: 340px;
+  max-height: min(340px, 42dvh);
   margin: 0 auto;
 }
 

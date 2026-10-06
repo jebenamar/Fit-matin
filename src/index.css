@@ -104,6 +104,12 @@ select {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-scroll-fill {
+  display: flex;
+  flex-direction: column;
 }
 
 .app-tabbar {
